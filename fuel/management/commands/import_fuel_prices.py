@@ -51,7 +51,7 @@ class Command(BaseCommand):
             ) from exc
 
         with file_handle:
-            reader = csv.DictReader(file_handle)
+            reader = csv.DictReader(file_handle, skipinitialspace=True)
 
             # Validate and normalize the CSV headers.
             if not reader.fieldnames:

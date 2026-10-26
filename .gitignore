@@ -52,3 +52,5 @@ dist/
 *.tmp
 *.bak
 EOF
+
+*.geocode_cache.json

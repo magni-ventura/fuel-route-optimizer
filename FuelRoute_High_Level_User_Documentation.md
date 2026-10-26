@@ -16,8 +16,7 @@ The assessment assumptions are a maximum vehicle range of **500 miles**
 and fuel economy of **10 miles per gallon (MPG)**. These are calculation
 assumptions, not a guarantee of real-world vehicle performance.
 
-The exact fields returned to users depend on the current API
-implementation.
+The route endpoint returns route details and a fuel optimization result.
 
 ## 2. What information does it use?
 
@@ -39,30 +38,40 @@ The CSV discussed during development contains: - OPIS Truckstop ID -
 Truckstop Name - Address - City - State - Rack ID - Retail Price
 
 The source CSV does **not** contain latitude/longitude. The system
-therefore needs station coordinate enrichment before it can reliably
-determine which stations are near a route. Fuel prices are only as
-current as the supplied dataset or latest import; they should not be
-treated as live pump prices unless the application explicitly fetches
-live data.
+therefore needs station coordinate enrichment before the API can use a
+station. Only stations with verified coordinates and a positive price
+are considered. Fuel prices are only as current as the supplied dataset
+or latest import; they should not be treated as live pump prices unless
+the application explicitly fetches live data.
 
 ## 3. Typical journey workflow
 
-1.  **Enter the journey:** Provide the start and destination in the
-    format required by the API or user interface.
+1.  **Enter the journey:** Provide a start and destination in the
+    `start_location` and `finish_location` fields.
 2.  **Submit the request:** The client sends the request to the backend.
 3.  **Calculate the route:** The backend obtains driving-route
     information from its routing provider.
 4.  **Evaluate fuel options:** Eligible stations and their prices are
     compared along or near the route.
-5.  **Review the result:** Depending on the implemented response, the
-    result may include route details, map geometry, fuel-stop
-    recommendations and cost estimates.
+5.  **Review the result:** Check the route details, map geometry,
+    recommended fuel stops and estimated cost.
 6.  **Correct and retry:** If input validation fails, correct the
     location or required fields and submit again.
 
-Use the actual endpoint and input field names from the current
-application. This guide intentionally does not invent an unverified API
-request format.
+Send a `POST` request to `/api/v1/fuel-routes/` with JSON containing
+`start_location` and `finish_location`, for example:
+
+``` json
+{
+  "start_location": "Chicago, IL",
+  "finish_location": "Indianapolis, IN"
+}
+```
+
+A successful response contains `start`, `finish`, `route` and
+`optimization`. The route includes its distance, duration and GeoJSON
+geometry. The optimization includes `estimated_total_cost`,
+recommended `fuel_stops` and the calculated `path`.
 
 ## 4. Testing with Postman
 
@@ -114,8 +123,10 @@ has been added to the project.
                                 unavailable             
   -----------------------------------------------------------------------------
 
-These are general meanings. Actual status codes depend on the
-implementation.
+`422 Unprocessable Entity` means no fuel-stop sequence satisfies the
+range constraint. `503 Service Unavailable` means there is no suitable
+verified fuel-price data for the route origin. Check that station
+coordinates have been enriched and verified.
 
 ## 5. Understanding fuel estimates
 
@@ -148,7 +159,10 @@ station must be reachable on or near the route, and the vehicle must be
 able to reach the next stop. If no suitable station is found, the system
 should communicate the limitation rather than invent a recommendation.
 
-Exact result fields depend on the API response.
+The API considers stations no more than 10 miles from the route and uses
+the nearest station within 10 miles of the origin to estimate the
+starting fuel price. The optimizer assumes 10 MPG and a 500-mile maximum
+range.
 
 ## 7. Common problems
 
@@ -162,9 +176,12 @@ formatting and required fields.
 location may not connect to a routable road, or the request may time
 out.
 
-**No fuel stops are returned:** The data may not cover the route,
-station coordinates may be missing, or no station may meet the route and
-range constraints.
+**Fuel data is unavailable:** The database may have no stations with
+verified coordinates, or no priced station within 10 miles of the
+origin. Enrich and verify station coordinates, then retry.
+
+**No feasible stop plan:** The available stations may not provide a
+reachable sequence within the assumed 500-mile range.
 
 **Server returns an error:** Give the maintainer the endpoint path, HTTP
 method, request time, status code, sanitized response body, and request

@@ -1,8 +1,9 @@
+
 from django.db import models
+from django.contrib.gis.db import models as gis_models
 
-# Create your models here.
 
-class FuelStation(models.Model):
+class FuelStation(gis_models.Model):
     truckstop_id = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True)
@@ -10,16 +11,26 @@ class FuelStation(models.Model):
     state = models.CharField(max_length=10)
     rack_id = models.CharField(max_length=50, blank=True)
 
-    # Store fuel prices as currency values, not floating-point numbers.
+    # PostGIS spatial point for efficient geographic queries.
+    # Coordinates are stored as longitude, latitude.
+    location = gis_models.PointField(
+        geography=True,
+        srid=4326,
+        null=True,
+        blank=True,
+        spatial_index=True,
+    )
+
+    # Store fuel prices as currency values.
     retail_price = models.DecimalField(
         max_digits=10,
         decimal_places=4,
     )
 
+    # Retain existing coordinate fields for compatibility.
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
 
-    # Indicates whether the coordinates have been verified.
     coordinates_verified = models.BooleanField(default=False)
 
     class Meta:

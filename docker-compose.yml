@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgis/postgis:17-3.6
+    container_name: fuelroute-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fuel_route_db}
+      POSTGRES_USER: ${DB_USER:-fuel_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - fuelroute_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fuelroute-api
+    restart: unless-stopped
+    environment:
+      DB_NAME: ${DB_NAME:-fuel_route_db}
+      DB_USER: ${DB_USER:-fuel_app}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: "5432"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+volumes:
+  fuelroute_postgres_data:

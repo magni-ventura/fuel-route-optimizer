@@ -1,28 +1,24 @@
-
-FROM python:3.13-slim
+FROM python:3.13-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system packages needed by Python dependencies.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       gcc \
-       libpq-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binutils \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies first for better build caching.
-COPY requirements.txt .
+COPY requirements.txt /app/requirements.txt
+
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy the Django project.
-COPY . .
-
-# Support file-based application logging if configured in Django.
-RUN mkdir -p /app/logs
+COPY . /app/
 
 EXPOSE 8000
 

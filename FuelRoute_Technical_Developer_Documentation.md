@@ -31,7 +31,11 @@ the backend with Postman.
 The source CSV contains station identifiers, names, text addresses,
 city, state, rack ID and retail price. It does **not** contain
 latitude/longitude, so stations must be geocoded or otherwise enriched
-before accurate route-corridor matching is possible.
+before accurate route-corridor matching is possible. The route API uses
+only `FuelStation` records marked `coordinates_verified` with non-null
+coordinates and a positive retail price. It matches stations within 10
+miles of the route and requires a priced station within 10 miles of the
+origin to establish the starting fuel price.
 
 ## 2. Architecture
 
@@ -79,8 +83,12 @@ claiming a provider is active.
 6.  Select stops that respect vehicle range and fuel-cost constraints.
 7.  Return route and stop information as JSON.
 
-This is the intended design flow; the actual source code is
-authoritative for the implemented sequence.
+The API endpoint is `POST /api/v1/fuel-routes/`, accepting
+`start_location` and `finish_location`. A successful response includes
+`start`, `finish`, `route` and `optimization` objects. Fuel data that
+cannot support an origin price returns HTTP 503; an infeasible stop
+sequence returns HTTP 422. The optimizer uses the documented 500-mile
+maximum range and 10 MPG assumptions.
 
 ## 3. Project layout
 
